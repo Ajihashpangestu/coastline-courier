@@ -37,9 +37,9 @@ export const DISPLAY = {
 };
 
 export const PALETTE = {
-  skyTop: '#2f6db3',
-  skyMid: '#7db3dd',
-  skyHorizon: '#f7c98b',
+  skyTop: '#2b4f7e',
+  skyMid: '#8fb6d9',
+  skyHorizon: '#ffb26b',
   sunGlow: '#ffe9b8',
   deepWater: '#17617f',
   shallowWater: '#2b93a8',
