@@ -112,17 +112,33 @@ function drawSky(ctx, camera) {
   ctx.fillRect(0, 0, camera.width, camera.height);
   const sun = projectPoint(camera, -14000, 3400, 7000);
   if (sun) {
-    const glow = ctx.createRadialGradient(sun.x, sun.y, 4, sun.x, sun.y, 190);
-    glow.addColorStop(0, PALETTE.sunGlow);
-    glow.addColorStop(1, 'rgba(255,233,184,0)');
+    const glow = ctx.createRadialGradient(sun.x, sun.y, 4, sun.x, sun.y, 270);
+    glow.addColorStop(0, 'rgba(255,246,205,0.98)');
+    glow.addColorStop(0.18, 'rgba(255,222,150,0.55)');
+    glow.addColorStop(0.55, 'rgba(255,205,120,0.18)');
+    glow.addColorStop(1, 'rgba(255,205,120,0)');
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(sun.x, sun.y, 190, 0, Math.PI * 2);
+    ctx.arc(sun.x, sun.y, 270, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#fff6d8';
+    ctx.fillStyle = '#fff6cf';
     ctx.beginPath();
-    ctx.arc(sun.x, sun.y, 26, 0, Math.PI * 2);
+    ctx.arc(sun.x, sun.y, 30, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = 'rgba(255,230,160,0.45)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(sun.x - 160, sun.y);
+    ctx.lineTo(sun.x + 160, sun.y);
+    ctx.stroke();
+  }
+  const horizon = projectPoint(camera, camera.x + camera.forward.x * 9000, 0, camera.z + camera.forward.z * 9000);
+  if (horizon) {
+    const haze = ctx.createLinearGradient(0, horizon.y - 140, 0, horizon.y + 30);
+    haze.addColorStop(0, 'rgba(255,238,210,0)');
+    haze.addColorStop(1, 'rgba(255,238,210,0.32)');
+    ctx.fillStyle = haze;
+    ctx.fillRect(0, horizon.y - 140, camera.width, 170);
   }
 }
 
@@ -159,6 +175,18 @@ function drawSeaHorizon(ctx, camera) {
   ctx.fill();
 }
 
+function parseColor(value) {
+  if (value.startsWith('#')) return [1, 3, 5].map((i) => parseInt(value.slice(i, i + 2), 16));
+  return value.match(/\d+/g).slice(0, 3).map(Number);
+}
+
+function mixColor(colorA, colorB, amount) {
+  const a = parseColor(colorA);
+  const b = parseColor(colorB);
+  const mixed = a.map((v, i) => Math.round(v + (b[i] - v) * clamp(amount, 0, 1)));
+  return `rgb(${mixed[0]},${mixed[1]},${mixed[2]})`;
+}
+
 function drawTerrain(ctx, camera, state) {
   const cell = WORLD.terrainCell;
   const half = WORLD.terrainGridHalf;
@@ -186,8 +214,20 @@ function drawTerrain(ctx, camera, state) {
       if (depth > WORLD.viewDistance) continue;
       const base = terrainColorAt(x0 + cell / 2, z0 + cell / 2, avgHeight, slope);
       const grain = ((Math.sin(x0 * 12.9898 + z0 * 78.233) * 43758.5453) % 1 + 1) % 1;
-      const light = clamp(0.8 + slope * 0.45 + (avgHeight > 0 ? 0.08 : 0) + grain * 0.09, 0.6, 1.14);
-      quads.push({ projected, depth, color: shadeColor(base, light) });
+      const sunSlope = ((corners[0].height + corners[3].height) - (corners[1].height + corners[2].height)) / (2 * cell);
+      let light = clamp(0.82 + slope * 0.3 + sunSlope * 0.55 + (avgHeight > 0 ? 0.08 : 0) + grain * 0.09, 0.55, 1.2);
+      if (avgHeight < 0) {
+        const wave = Math.sin(x0 * 0.021 + z0 * 0.013 + state.time * 1.4) * 0.05;
+        light = clamp(light + wave, 0.55, 1.2);
+      }
+      let color = shadeColor(base, light);
+      if (avgHeight < 1.5 && avgHeight > -9) {
+        const foam = clamp((1.5 - Math.abs(avgHeight)) / 4, 0, 1) * (0.35 + grain * 0.4);
+        color = mixColor(color, '#f4fbff', foam);
+      }
+      const hazeMix = clamp((depth - 1400) / 5200, 0, 0.55);
+      if (hazeMix > 0) color = mixColor(color, PALETTE.skyHorizon, hazeMix);
+      quads.push({ projected, depth, color });
     }
   }
   quads.sort((a, b) => b.depth - a.depth);
@@ -264,6 +304,41 @@ function drawRunway(ctx, camera) {
     ctx.arc(light.x, light.y, Math.max(1.5, light.scale * 1.4), 0, Math.PI * 2);
     ctx.fill();
   }
+  for (let i = 0; i <= 12; i++) {
+    const z = cz - halfL + (i / 12) * RUNWAY.length;
+    for (const side of [-1, 1]) {
+      const light = projectPoint(camera, cx + side * (halfW + 3), y + 1.2, z);
+      if (!light) continue;
+      ctx.fillStyle = 'rgba(255,214,120,0.35)';
+      ctx.beginPath();
+      ctx.arc(light.x, light.y, Math.max(3, light.scale * 3), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffe9a8';
+      ctx.beginPath();
+      ctx.arc(light.x, light.y, Math.max(1.4, light.scale * 1.3), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  for (let i = 1; i <= 5; i++) {
+    const light = projectPoint(camera, cx, y + 1.2, cz + halfL + i * 60);
+    if (!light) continue;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(light.x, light.y, Math.max(1.6, light.scale * 1.6), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  drawGroundQuad(ctx, camera, [
+    { x: cx - 14, y: y + 0.12, z: cz - halfL + 150 },
+    { x: cx - 6, y: y + 0.12, z: cz - halfL + 150 },
+    { x: cx - 6, y: y + 0.12, z: cz - halfL + 190 },
+    { x: cx - 14, y: y + 0.12, z: cz - halfL + 190 },
+  ], PALETTE.runwayPaint);
+  drawGroundQuad(ctx, camera, [
+    { x: cx + 6, y: y + 0.12, z: cz - halfL + 150 },
+    { x: cx + 14, y: y + 0.12, z: cz - halfL + 150 },
+    { x: cx + 14, y: y + 0.12, z: cz - halfL + 190 },
+    { x: cx + 6, y: y + 0.12, z: cz - halfL + 190 },
+  ], PALETTE.runwayPaint);
 }
 
 function drawRing(ctx, camera, ring, color, pulse) {
@@ -288,20 +363,29 @@ function drawRing(ctx, camera, ring, color, pulse) {
     outer.push(po);
     inner.push(pi);
   }
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = 0.22 + pulse * 0.25;
+  ctx.lineWidth = 16;
+  ctx.beginPath();
+  ctx.moveTo(outer[0].x, outer[0].y);
+  for (const p of outer) ctx.lineTo(p.x, p.y);
+  ctx.closePath();
+  ctx.stroke();
   ctx.fillStyle = color;
-  ctx.globalAlpha = 0.92;
+  ctx.globalAlpha = 0.95;
   ctx.beginPath();
   ctx.moveTo(outer[0].x, outer[0].y);
   for (const p of outer) ctx.lineTo(p.x, p.y);
   for (let i = inner.length - 1; i >= 0; i--) ctx.lineTo(inner[i].x, inner[i].y);
   ctx.closePath();
   ctx.fill();
-  ctx.globalAlpha = 0.25 + pulse * 0.2;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 6;
+  ctx.globalAlpha = 0.55 + pulse * 0.35;
+  ctx.strokeStyle = '#fff7d6';
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(outer[0].x, outer[0].y);
   for (const p of outer) ctx.lineTo(p.x, p.y);
+  ctx.closePath();
   ctx.stroke();
   ctx.globalAlpha = 1;
 }
@@ -479,10 +563,27 @@ function drawPlaneShadow(ctx, camera, state) {
   if (!p) return;
   const heightAbove = clamp(plane.y - groundY, 0, 600);
   const size = clamp(16 * p.scale * (1 - heightAbove / 1400), 3, 60);
-  ctx.fillStyle = `rgba(16,32,47,${clamp(0.34 - heightAbove / 2200, 0.05, 0.34)})`;
+  ctx.fillStyle = `rgba(16,32,47,${clamp(0.36 - heightAbove / 2200, 0.05, 0.36)})`;
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(degToRad(plane.headingDeg) * 0.35);
   ctx.beginPath();
-  ctx.ellipse(p.x, p.y, size, size * 0.32, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, size, size * 0.3, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0, 0, size * 0.22, size * 0.62, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  if (state.landingSmoke) {
+    for (let i = 0; i < 6; i++) {
+      const puff = projectPoint(camera, plane.x - 4 + i * 1.6, groundY + 1 + i * 0.7, plane.z + 6 + i * 2.2);
+      if (!puff) continue;
+      ctx.fillStyle = `rgba(235,238,240,${0.5 - i * 0.06})`;
+      ctx.beginPath();
+      ctx.arc(puff.x, puff.y, Math.max(3, puff.scale * (4 + i * 1.6)), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 }
 
 export function drawWorld(ctx, state, width, height) {
