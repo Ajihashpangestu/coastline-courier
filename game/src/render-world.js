@@ -111,7 +111,7 @@ function drawSky(ctx, camera) {
   gradient.addColorStop(1, PALETTE.skyHorizon);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, camera.width, camera.height);
-  const sun = projectPoint(camera, -14000, 3400, 7000);
+  const sun = projectPoint(camera, -9000, 2600, -11000);
   if (sun) {
     const glow = ctx.createRadialGradient(sun.x, sun.y, 4, sun.x, sun.y, 270);
     glow.addColorStop(0, 'rgba(255,246,205,0.98)');
@@ -135,11 +135,12 @@ function drawSky(ctx, camera) {
   }
   const horizon = projectPoint(camera, camera.x + camera.forward.x * 9000, 0, camera.z + camera.forward.z * 9000);
   if (horizon) {
-    const haze = ctx.createLinearGradient(0, horizon.y - 140, 0, horizon.y + 30);
-    haze.addColorStop(0, 'rgba(255,238,210,0)');
-    haze.addColorStop(1, 'rgba(255,238,210,0.32)');
+    const haze = ctx.createLinearGradient(0, horizon.y - 220, 0, horizon.y + 60);
+    haze.addColorStop(0, 'rgba(255,190,120,0)');
+    haze.addColorStop(0.65, 'rgba(255,190,120,0.22)');
+    haze.addColorStop(1, 'rgba(255,170,100,0.4)');
     ctx.fillStyle = haze;
-    ctx.fillRect(0, horizon.y - 140, camera.width, 170);
+    ctx.fillRect(0, horizon.y - 220, camera.width, 280);
   }
 }
 
@@ -225,7 +226,8 @@ function drawTerrain(ctx, camera, state) {
       }
       let color = shadeColor(base, light);
       if (avgHeight >= 0.6 && avgHeight < 80) {
-        color = mixColor(color, grain > 0.5 ? '#86c45c' : '#5f9c43', 0.1 + patch * 0.08);
+        color = mixColor(color, patch > 0.62 ? '#d9b45b' : grain > 0.5 ? '#86c45c' : '#4e8f3a', 0.16 + patch * 0.14);
+        if (patch > 0.47 && patch < 0.53) color = mixColor(color, '#3d6b2f', 0.35);
       }
       if (avgHeight < 0 && grain > 0.84) {
         const sparkle = clamp((grain - 0.84) * 2.4, 0, 0.34) * (0.55 + 0.45 * Math.sin(state.time * 2 + x0 * 0.04 + z0 * 0.03));
@@ -533,7 +535,7 @@ function drawClouds(ctx, camera, state) {
   }
   drawn.sort((a, b) => b.p.depth - a.p.depth);
   for (const { cloud, p } of drawn) {
-    ctx.fillStyle = 'rgba(148,176,196,0.34)';
+    ctx.fillStyle = 'rgba(196,150,130,0.38)';
     for (let i = 0; i < cloud.puffs; i++) {
       const offset = (i - (cloud.puffs - 1) / 2) * cloud.radius * 0.34 * p.scale;
       ctx.beginPath();
@@ -575,6 +577,132 @@ function drawCargoCrates(ctx, camera, state) {
       ctx.lineTo(p.x, p.y - size / 2);
       ctx.closePath();
       ctx.stroke();
+    }
+  }
+}
+
+function hash01(a, b) {
+  const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function drawTree(ctx, p, size, shade) {
+  ctx.strokeStyle = '#5d4326';
+  ctx.lineWidth = Math.max(1, size * 0.12);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  ctx.lineTo(p.x, p.y - size * 0.35);
+  ctx.stroke();
+  ctx.fillStyle = shade > 0.5 ? '#2f6b35' : '#3f7d45';
+  ctx.beginPath();
+  ctx.moveTo(p.x - size * 0.42, p.y - size * 0.25);
+  ctx.lineTo(p.x + size * 0.42, p.y - size * 0.25);
+  ctx.lineTo(p.x, p.y - size * 1.05);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = shade > 0.5 ? '#3f7d45' : '#57a047';
+  ctx.beginPath();
+  ctx.moveTo(p.x - size * 0.3, p.y - size * 0.62);
+  ctx.lineTo(p.x + size * 0.3, p.y - size * 0.62);
+  ctx.lineTo(p.x, p.y - size * 1.3);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawHouse(ctx, p, size, roof) {
+  const w = size;
+  const h = size * 0.62;
+  ctx.fillStyle = '#f5efe0';
+  ctx.fillRect(p.x - w / 2, p.y - h, w, h);
+  ctx.fillStyle = roof;
+  ctx.beginPath();
+  ctx.moveTo(p.x - w * 0.62, p.y - h);
+  ctx.lineTo(p.x + w * 0.62, p.y - h);
+  ctx.lineTo(p.x, p.y - h - size * 0.42);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#5d4326';
+  ctx.fillRect(p.x - w * 0.09, p.y - h * 0.55, w * 0.18, h * 0.55);
+  ctx.fillStyle = '#ffd98a';
+  ctx.fillRect(p.x - w * 0.34, p.y - h * 0.72, w * 0.16, h * 0.2);
+  ctx.fillRect(p.x + w * 0.18, p.y - h * 0.72, w * 0.16, h * 0.2);
+}
+
+function drawScenery(ctx, camera, state) {
+  const features = [];
+  const cell = WORLD.terrainCell;
+  const half = WORLD.terrainGridHalf;
+  const centerX = Math.round(state.plane.x / cell) * cell;
+  const centerZ = Math.round(state.plane.z / cell) * cell;
+  for (let iz = -half; iz < half; iz++) {
+    for (let ix = -half; ix < half; ix++) {
+      const x0 = centerX + ix * cell;
+      const z0 = centerZ + iz * cell;
+      const h = hash01(ix + centerX / cell, iz + centerZ / cell);
+      if (h > 0.22) continue;
+      const wx = x0 + hash01(ix * 3, iz) * cell;
+      const wz = z0 + hash01(ix, iz * 7) * cell;
+      const ground = terrainHeightAt(wx, wz);
+      if (ground < 4 || ground > 210) continue;
+      const p = projectPoint(camera, wx, ground, wz);
+      if (!p || p.depth > 4300) continue;
+      features.push({ depth: p.depth, kind: 'tree', p, size: clamp(15 * p.scale, 3, 44), shade: h });
+      if (h < 0.1) {
+        const p2 = projectPoint(camera, wx + 26, terrainHeightAt(wx + 26, wz + 18), wz + 18);
+        if (p2 && p2.depth <= 4300) features.push({ depth: p2.depth, kind: 'tree', p: p2, size: clamp(12 * p2.scale, 3, 36), shade: 1 - h });
+      }
+    }
+  }
+  const hamlets = [
+    { x: 350, z: 1250, r: 260, n: 11 },
+    { x: -2650, z: 2050, r: 220, n: 9 },
+    { x: -750, z: -950, r: 240, n: 10 },
+    { x: 100, z: -520, r: 200, n: 8 },
+    { x: 1750, z: -350, r: 180, n: 7 },
+    { x: 650, z: 1500, r: 200, n: 8 },
+  ];
+  const roofs = ['#b5502f', '#8a5a33', '#7a4a3a', '#a03d2a'];
+  for (const hamlet of hamlets) {
+    for (let i = 0; i < hamlet.n; i++) {
+      const wx = hamlet.x + (hash01(hamlet.x + i * 13, hamlet.z) - 0.5) * hamlet.r * 2;
+      const wz = hamlet.z + (hash01(hamlet.x, hamlet.z + i * 17) - 0.5) * hamlet.r * 2;
+      const ground = terrainHeightAt(wx, wz);
+      if (ground < 2) continue;
+      const p = projectPoint(camera, wx, ground, wz);
+      if (!p || p.depth > 5200) continue;
+      features.push({ depth: p.depth, kind: 'house', p, size: clamp(13 * p.scale, 3, 34), roof: roofs[i % roofs.length] });
+    }
+  }
+  features.sort((a, b) => b.depth - a.depth);
+  for (const f of features) {
+    if (f.kind === 'tree') drawTree(ctx, f.p, f.size, f.shade);
+    else drawHouse(ctx, f.p, f.size, f.roof);
+  }
+  const roads = [
+    [[350, 1250], [900, 1900]],
+    [[-2650, 2050], [350, 1250]],
+    [[1750, -350], [350, 1250]],
+    [[350, 1250], [-350, -1150]],
+    [[-750, -950], [100, -520]],
+  ];
+  ctx.strokeStyle = 'rgba(203,185,138,0.85)';
+  ctx.lineCap = 'round';
+  for (const [[ax, az], [bx, bz]] of roads) {
+    const steps = 26;
+    let prev = null;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const wx = ax + (bx - ax) * t;
+      const wz = az + (bz - az) * t;
+      const p = projectPoint(camera, wx, Math.max(terrainHeightAt(wx, wz), 0) + 0.8, wz);
+      if (p && prev && p.depth < 5600) {
+        ctx.lineWidth = clamp(2.4 * p.scale, 1, 7);
+        ctx.beginPath();
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      }
+      prev = p;
     }
   }
 }
@@ -621,6 +749,7 @@ export function drawWorld(ctx, state, width, height) {
   drawRunway(ctx, camera);
   drawObjectiveMarkers(ctx, camera, state);
   drawLandmarks(ctx, camera);
+  drawScenery(ctx, camera, state);
   drawCargoCrates(ctx, camera, state);
   drawPlaneShadow(ctx, camera, state);
   drawClouds(ctx, camera, state);
