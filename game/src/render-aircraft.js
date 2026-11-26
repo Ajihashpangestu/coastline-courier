@@ -50,7 +50,11 @@ function drawPlaneShapes(ctx, state, plane) {
   ctx.fill();
   ctx.fillStyle = PALETTE.planeTrim;
   ctx.fillRect(-56, 5.5, 112, 2);
-  ctx.fillStyle = PALETTE.planeBody;
+  const fuselageShade = ctx.createLinearGradient(-10, 0, 10, 0);
+  fuselageShade.addColorStop(0, '#c2432b');
+  fuselageShade.addColorStop(0.45, PALETTE.planeBody);
+  fuselageShade.addColorStop(1, '#a83a24');
+  ctx.fillStyle = fuselageShade;
   ctx.beginPath();
   ctx.moveTo(-7, -36);
   ctx.lineTo(7, -36);
@@ -60,6 +64,14 @@ function drawPlaneShapes(ctx, state, plane) {
   ctx.lineTo(-10, 26);
   ctx.closePath();
   ctx.fill();
+  ctx.strokeStyle = 'rgba(90,30,18,0.55)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(-6.5, -24);
+  ctx.lineTo(6.5, -24);
+  ctx.moveTo(-8, 14);
+  ctx.lineTo(8, 14);
+  ctx.stroke();
   ctx.fillStyle = PALETTE.planeTrim;
   ctx.beginPath();
   ctx.moveTo(-4.5, -20);
@@ -72,6 +84,33 @@ function drawPlaneShapes(ctx, state, plane) {
   ctx.beginPath();
   ctx.ellipse(0, -8, 5.4, 9, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.beginPath();
+  ctx.ellipse(-1.8, -12, 1.7, 4.6, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(90,30,18,0.5)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(-40, 3.4);
+  ctx.lineTo(-40, 9.6);
+  ctx.moveTo(-22, 3.2);
+  ctx.lineTo(-22, 10);
+  ctx.moveTo(22, 3.2);
+  ctx.lineTo(22, 10);
+  ctx.moveTo(40, 3.4);
+  ctx.lineTo(40, 9.6);
+  ctx.stroke();
+  if (plane.speed > 42) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+    ctx.lineWidth = 1.3;
+    for (const offset of [-52, -34, 34, 52]) {
+      const streak = 14 + (plane.speed - 42) * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(offset, 16);
+      ctx.lineTo(offset * 1.04, 16 + streak);
+      ctx.stroke();
+    }
+  }
   ctx.fillStyle = PALETTE.planeBody;
   ctx.beginPath();
   ctx.moveTo(-3, 24);
@@ -111,6 +150,14 @@ function drawPlaneShapes(ctx, state, plane) {
 }
 
 function drawGauge(ctx, x, y, radius, label, needleAngle, ticks) {
+  const bezel = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.35, radius * 0.2, x, y, radius * 1.12);
+  bezel.addColorStop(0, '#4b5766');
+  bezel.addColorStop(0.7, '#232c38');
+  bezel.addColorStop(1, '#11161e');
+  ctx.fillStyle = bezel;
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 1.12, 0, Math.PI * 2);
+  ctx.fill();
   ctx.fillStyle = PALETTE.gaugeFace;
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -118,7 +165,7 @@ function drawGauge(ctx, x, y, radius, label, needleAngle, ticks) {
   ctx.strokeStyle = PALETTE.gaugeLit;
   ctx.lineWidth = 2;
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,217,138,0.75)';
+  ctx.strokeStyle = 'rgba(255,217,138,0.8)';
   ctx.lineWidth = 1.4;
   for (let i = 0; i < ticks; i++) {
     const angle = Math.PI * 0.75 + (i / (ticks - 1)) * Math.PI * 1.5;
@@ -127,6 +174,12 @@ function drawGauge(ctx, x, y, radius, label, needleAngle, ticks) {
     ctx.lineTo(x + Math.cos(angle) * radius * 0.92, y + Math.sin(angle) * radius * 0.92);
     ctx.stroke();
   }
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+  ctx.lineWidth = 3.4;
+  ctx.beginPath();
+  ctx.moveTo(x + 1.6, y + 2);
+  ctx.lineTo(x + Math.cos(needleAngle) * radius * 0.8 + 1.6, y + Math.sin(needleAngle) * radius * 0.8 + 2);
+  ctx.stroke();
   ctx.strokeStyle = '#ff9f2e';
   ctx.lineWidth = 2.6;
   ctx.beginPath();
@@ -137,7 +190,12 @@ function drawGauge(ctx, x, y, radius, label, needleAngle, ticks) {
   ctx.beginPath();
   ctx.arc(x, y, 3, 0, Math.PI * 2);
   ctx.fill();
-  ctx.font = `600 ${Math.max(9, radius * 0.3)}px system-ui, sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.13)';
+  ctx.beginPath();
+  ctx.ellipse(x - radius * 0.32, y - radius * 0.42, radius * 0.42, radius * 0.2, -0.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = PALETTE.gaugeLit;
+  ctx.font = `700 ${Math.max(9, radius * 0.3)}px system-ui, sans-serif`;
   ctx.textAlign = 'center';
   ctx.fillText(label, x, y + radius * 0.62);
 }
@@ -184,7 +242,11 @@ export function drawCockpit(ctx, state, width, height) {
   if (state.cameraMode !== 'cockpit' || state.screen === 'menu') return;
   const plane = state.plane;
   const panelTop = height * 0.68;
-  ctx.fillStyle = '#222b36';
+  const panelShade = ctx.createLinearGradient(0, panelTop, 0, height);
+  panelShade.addColorStop(0, '#2c3644');
+  panelShade.addColorStop(0.4, '#222b36');
+  panelShade.addColorStop(1, '#161d27');
+  ctx.fillStyle = panelShade;
   ctx.beginPath();
   ctx.moveTo(0, height);
   ctx.lineTo(0, panelTop + 40);
@@ -195,6 +257,12 @@ export function drawCockpit(ctx, state, width, height) {
   ctx.strokeStyle = '#39424e';
   ctx.lineWidth = 3;
   ctx.stroke();
+  ctx.fillStyle = '#39424e';
+  for (const sx of [0.06, 0.5, 0.94]) {
+    ctx.beginPath();
+    ctx.arc(width * sx, panelTop + 26, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.fillStyle = '#1a222c';
   ctx.beginPath();
   ctx.moveTo(0, 0);
@@ -239,11 +307,21 @@ export function drawCockpit(ctx, state, width, height) {
   ctx.moveTo(yokeX, yokeY + 6);
   ctx.lineTo(yokeX, height);
   ctx.stroke();
-  const warning = plane.stalled ? 'STALL' : plane.fuel < 18 ? 'LOW FUEL' : plane.hull < 45 ? 'HULL' : '';
-  if (warning) {
-    ctx.fillStyle = '#ff5a4e';
-    ctx.font = '700 15px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(warning, width * 0.5, panelTop + 22);
-  }
+  const lamps = [
+    { label: 'STALL', lit: plane.stalled, color: '#ff5a4e' },
+    { label: 'FUEL', lit: plane.fuel < 18, color: '#ffb03a' },
+    { label: 'HULL', lit: plane.hull < 45, color: '#ff5a4e' },
+    { label: 'GEAR', lit: plane.onGround, color: '#3ee06f' },
+  ];
+  ctx.font = '700 11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  lamps.forEach((lamp, i) => {
+    const lx = width * 0.5 + (i - 1.5) * 74;
+    ctx.fillStyle = lamp.lit ? lamp.color : '#39424e';
+    ctx.beginPath();
+    ctx.roundRect(lx - 32, panelTop + 8, 64, 20, 5);
+    ctx.fill();
+    ctx.fillStyle = lamp.lit ? '#10161f' : '#8b96a5';
+    ctx.fillText(lamp.label, lx, panelTop + 22);
+  });
 }
