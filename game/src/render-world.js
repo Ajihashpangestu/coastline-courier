@@ -103,28 +103,68 @@ export function projectPoint(camera, x, y, z) {
   };
 }
 
+function drawMountainSilhouettes(ctx, camera, horizonY) {
+  const headingDeg = Math.atan2(camera.forward.x, -camera.forward.z) * 57.2958;
+  const layers = [
+    { base: 26, amp: 74, color: 'rgba(107,90,128,0.5)', snow: 'rgba(255,235,220,0.5)', seed: 3.1 },
+    { base: 10, amp: 52, color: 'rgba(62,66,88,0.68)', snow: 'rgba(255,240,225,0.75)', seed: 7.7 },
+  ];
+  for (const layer of layers) {
+    const peaks = [];
+    ctx.fillStyle = layer.color;
+    ctx.beginPath();
+    ctx.moveTo(-20, horizonY + 14);
+    for (let x = -20; x <= camera.width + 20; x += 46) {
+      const t = (x + headingDeg * 9) * 0.011 + layer.seed;
+      const peak = layer.base + Math.abs(Math.sin(t * 2.3)) * layer.amp + Math.abs(Math.sin(t * 5.7)) * layer.amp * 0.35;
+      const y = horizonY - peak;
+      peaks.push({ x, y, peak });
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(camera.width + 20, horizonY + 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = layer.snow;
+    for (const p of peaks) {
+      if (p.peak < layer.base + layer.amp * 0.72) continue;
+      ctx.beginPath();
+      ctx.moveTo(p.x - 9, p.y + 8);
+      ctx.lineTo(p.x, p.y);
+      ctx.lineTo(p.x + 9, p.y + 8);
+      ctx.lineTo(p.x + 3, p.y + 5);
+      ctx.lineTo(p.x, p.y + 9);
+      ctx.lineTo(p.x - 3, p.y + 5);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+}
+
 function drawSky(ctx, camera) {
   const gradient = ctx.createLinearGradient(0, 0, 0, camera.height);
   gradient.addColorStop(0, PALETTE.skyTop);
-  gradient.addColorStop(0.55, PALETTE.skyMid);
-  gradient.addColorStop(0.78, PALETTE.skyHorizon);
-  gradient.addColorStop(1, PALETTE.skyHorizon);
+  gradient.addColorStop(0.42, '#6d6a9e');
+  gradient.addColorStop(0.62, PALETTE.skyMid);
+  gradient.addColorStop(0.8, PALETTE.skyHorizon);
+  gradient.addColorStop(1, '#ff8f4d');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, camera.width, camera.height);
+  const horizonForRange = projectPoint(camera, camera.x + camera.forward.x * 9000, 0, camera.z + camera.forward.z * 9000);
+  if (horizonForRange) drawMountainSilhouettes(ctx, camera, horizonForRange.y);
   const sun = projectPoint(camera, -9000, 2600, -11000);
   if (sun) {
-    const glow = ctx.createRadialGradient(sun.x, sun.y, 4, sun.x, sun.y, 270);
+    const glow = ctx.createRadialGradient(sun.x, sun.y, 4, sun.x, sun.y, 360);
     glow.addColorStop(0, 'rgba(255,246,205,0.98)');
-    glow.addColorStop(0.18, 'rgba(255,222,150,0.55)');
-    glow.addColorStop(0.55, 'rgba(255,205,120,0.18)');
-    glow.addColorStop(1, 'rgba(255,205,120,0)');
+    glow.addColorStop(0.14, 'rgba(255,222,150,0.6)');
+    glow.addColorStop(0.45, 'rgba(255,190,110,0.28)');
+    glow.addColorStop(1, 'rgba(255,170,90,0)');
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(sun.x, sun.y, 270, 0, Math.PI * 2);
+    ctx.arc(sun.x, sun.y, 360, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#fff6cf';
     ctx.beginPath();
-    ctx.arc(sun.x, sun.y, 30, 0, Math.PI * 2);
+    ctx.arc(sun.x, sun.y, 38, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,230,160,0.45)';
     ctx.lineWidth = 3;
@@ -164,9 +204,12 @@ function drawSeaHorizon(ctx, camera) {
     camera.z + camera.forward.z * reach + camera.right.z * reach,
   );
   if (!left || !right) return;
-  const seaGradient = ctx.createLinearGradient(0, Math.min(left.y, right.y), 0, camera.height);
-  seaGradient.addColorStop(0, PALETTE.shallowWater);
-  seaGradient.addColorStop(0.35, PALETTE.deepWater);
+  const topY = Math.min(left.y, right.y);
+  const seaGradient = ctx.createLinearGradient(0, topY, 0, camera.height);
+  seaGradient.addColorStop(0, '#7a6a72');
+  seaGradient.addColorStop(0.18, PALETTE.shallowWater);
+  seaGradient.addColorStop(0.55, PALETTE.deepWater);
+  seaGradient.addColorStop(1, '#16394d');
   ctx.fillStyle = seaGradient;
   ctx.beginPath();
   ctx.moveTo(left.x, left.y);
@@ -175,6 +218,33 @@ function drawSeaHorizon(ctx, camera) {
   ctx.lineTo(0, camera.height);
   ctx.closePath();
   ctx.fill();
+  const sun = projectPoint(camera, -9000, 2600, -11000);
+  if (sun && sun.x > -200 && sun.x < camera.width + 200) {
+    const refl = ctx.createLinearGradient(0, topY, 0, camera.height);
+    refl.addColorStop(0, 'rgba(255,196,110,0.55)');
+    refl.addColorStop(0.5, 'rgba(255,170,90,0.25)');
+    refl.addColorStop(1, 'rgba(255,150,80,0.05)');
+    ctx.fillStyle = refl;
+    ctx.beginPath();
+    ctx.moveTo(sun.x - 46, topY);
+    ctx.lineTo(sun.x + 46, topY);
+    ctx.lineTo(sun.x + 150, camera.height);
+    ctx.lineTo(sun.x - 150, camera.height);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,220,160,0.5)';
+    ctx.lineWidth = 2;
+    for (let row = 0; row < 16; row++) {
+      const y = topY + 8 + row * ((camera.height - topY) / 16);
+      const spread = 40 + row * 7;
+      const off = (hash01(row * 3, 9) - 0.5) * spread;
+      const len = 14 + hash01(row, 4) * 30;
+      ctx.beginPath();
+      ctx.moveTo(sun.x + off - len / 2, y);
+      ctx.lineTo(sun.x + off + len / 2, y);
+      ctx.stroke();
+    }
+  }
 }
 
 function parseColor(value) {
@@ -218,13 +288,20 @@ function drawTerrain(ctx, camera, state) {
       const grain = ((Math.sin(x0 * 12.9898 + z0 * 78.233) * 43758.5453) % 1 + 1) % 1;
       const patch = ((Math.sin(Math.floor(x0 / 420) * 39.7 + Math.floor(z0 / 420) * 17.3) * 24634.63) % 1 + 1) % 1;
       const sunSlope = ((corners[0].height + corners[3].height) - (corners[1].height + corners[2].height)) / (2 * cell);
-      let light = clamp(0.8 + slope * 0.3 + sunSlope * 0.55 + (avgHeight > 0 ? 0.08 : 0) + grain * 0.16, 0.52, 1.24);
+      const gradX = ((corners[1].height + corners[2].height) - (corners[0].height + corners[3].height)) / (2 * cell);
+      const gradZ = ((corners[3].height + corners[2].height) - (corners[0].height + corners[1].height)) / (2 * cell);
+      const sunFacing = -(gradX * -0.63 + gradZ * -0.77);
+      let light = clamp(0.78 + slope * 0.34 + sunSlope * 0.55 + sunFacing * 0.5 + (avgHeight > 0 ? 0.08 : 0) + grain * 0.16, 0.46, 1.3);
       if (avgHeight >= 0.6 && avgHeight < 80) light = clamp(light + (patch - 0.5) * 0.14, 0.52, 1.24);
       if (avgHeight < 0) {
         const wave = Math.sin(x0 * 0.021 + z0 * 0.013 + state.time * 1.4) * 0.05;
         light = clamp(light + wave, 0.52, 1.24);
       }
       let color = shadeColor(base, light);
+      if (avgHeight > 0) {
+        if (sunFacing > 0.02) color = mixColor(color, '#ffc98a', clamp(sunFacing * 0.55, 0, 0.34));
+        else if (sunFacing < -0.02) color = mixColor(color, '#2c4638', clamp(-sunFacing * 0.5, 0, 0.3));
+      }
       if (avgHeight >= 0.6 && avgHeight < 80) {
         color = mixColor(color, patch > 0.62 ? '#d9b45b' : grain > 0.5 ? '#86c45c' : '#4e8f3a', 0.16 + patch * 0.14);
         if (patch > 0.47 && patch < 0.53) color = mixColor(color, '#3d6b2f', 0.35);
@@ -237,6 +314,8 @@ function drawTerrain(ctx, camera, state) {
         const foam = clamp((1.5 - Math.abs(avgHeight)) / 4, 0, 1) * (0.35 + grain * 0.4);
         color = mixColor(color, '#f4fbff', foam);
       }
+      if (avgHeight > 0) color = mixColor(color, '#e8a06a', 0.1);
+      else color = mixColor(color, '#c97b5a', 0.07);
       const hazeMix = clamp((depth - 1400) / 5200, 0, 0.55);
       if (hazeMix > 0) color = mixColor(color, PALETTE.skyHorizon, hazeMix);
       quads.push({ projected, depth, color });
@@ -542,14 +621,14 @@ function drawClouds(ctx, camera, state) {
       ctx.ellipse(p.x + offset, p.y + (7 + (i % 2) * 5) * p.scale, cloud.radius * 0.4 * p.scale, cloud.radius * 0.19 * p.scale, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = 'rgba(255,252,246,0.76)';
+    ctx.fillStyle = 'rgba(255,238,222,0.78)';
     for (let i = 0; i < cloud.puffs; i++) {
       const offset = (i - (cloud.puffs - 1) / 2) * cloud.radius * 0.34 * p.scale;
       ctx.beginPath();
       ctx.ellipse(p.x + offset, p.y + (i % 2) * 5 * p.scale, cloud.radius * 0.4 * p.scale, cloud.radius * 0.2 * p.scale, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillStyle = 'rgba(255,205,150,0.55)';
     for (let i = 0; i < cloud.puffs; i++) {
       const offset = (i - (cloud.puffs - 1) / 2) * cloud.radius * 0.3 * p.scale;
       ctx.beginPath();
@@ -685,7 +764,7 @@ function drawScenery(ctx, camera, state) {
     [[350, 1250], [-350, -1150]],
     [[-750, -950], [100, -520]],
   ];
-  ctx.strokeStyle = 'rgba(203,185,138,0.85)';
+  ctx.strokeStyle = 'rgba(232,217,174,0.95)';
   ctx.lineCap = 'round';
   for (const [[ax, az], [bx, bz]] of roads) {
     const steps = 26;
