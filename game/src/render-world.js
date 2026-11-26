@@ -846,10 +846,10 @@ function drawPlaneShadow(ctx, camera, state) {
   ctx.translate(p.x, p.y);
   ctx.rotate(degToRad(plane.bankDeg) * 0.35);
   ctx.beginPath();
-  ctx.ellipse(size * 0.06, 0, size * 1.3, size * 0.2, 0, 0, Math.PI * 2);
+  ctx.ellipse(size * 0.06, 0, size * 1.42, size * 0.22, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(0, -size * 0.08, size * 0.18, size * 0.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -size * 0.08, size * 0.2, size * 0.55, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
   ctx.ellipse(-size * 0.04, size * 0.34, size * 0.56, size * 0.11, 0, 0, Math.PI * 2);
