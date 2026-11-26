@@ -53,7 +53,8 @@ function ridgeHeight(x, z, dome) {
 function rawIslandHeight(x, z) {
   const dome = islandDome(x, z);
   const rolling = fractalNoise(x * 0.00045 + 7.3, z * 0.00045 - 2.1);
-  const hills = Math.pow(rolling, 1.7) * 330;
+  const relief = fractalNoise(x * 0.0016 - 3.4, z * 0.0016 + 5.9);
+  const hills = Math.pow(rolling, 1.55) * 360 + Math.pow(relief, 2) * 52;
   const shore = dome * 26;
   const seaFloor = -14 * (1 - dome);
   return dome * hills + ridgeHeight(x, z, dome) + shore + seaFloor;
