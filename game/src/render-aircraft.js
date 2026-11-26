@@ -10,14 +10,14 @@ export function drawChaseAircraft(ctx, camera, state) {
   const plane = state.plane;
   const anchor = projectPoint(camera, plane.x, plane.y, plane.z);
   if (!anchor) return;
-  const scale = clamp(anchor.scale * 1.22, 2.6, 5.2);
+  const scale = clamp(anchor.scale * 1.05, 2.4, plane.onGround ? 5.1 : 4.7);
   const bankRad = degToRad(plane.bankDeg);
   const pitchScale = clamp(1 - plane.pitchDeg * 0.008, 0.88, 1.1);
   ctx.save();
-  ctx.translate(anchor.x, anchor.y + 38);
+  ctx.translate(anchor.x, anchor.y + 54 + (plane.onGround ? 66 : 0));
   ctx.rotate(bankRad * 0.9);
-  ctx.scale(scale, scale * pitchScale);
-  ctx.transform(1, 0, clamp(-bankRad * 0.1, -0.07, 0.07), 1, 0, 0);
+  ctx.scale(scale, scale * 0.54 * pitchScale);
+  ctx.transform(1, 0, clamp(-0.07 - bankRad * 0.08, -0.13, -0.01), 1, 0, 0);
   drawPlaneShapes(ctx, state, plane);
   ctx.restore();
 }
@@ -127,8 +127,16 @@ function drawPlaneShapes(ctx, state, plane) {
   ctx.beginPath();
   ctx.ellipse(0, -43, 4.4, 3.2, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.save();
+  ctx.translate(0, -2.5);
+  ctx.scale(0.94, 0.94);
   drawWing(ctx, -1);
+  ctx.restore();
+  ctx.save();
+  ctx.translate(0, 2.5);
+  ctx.scale(1.06, 1.06);
   drawWing(ctx, 1);
+  ctx.restore();
   const fuselageShade = ctx.createLinearGradient(-12, 0, 12, 0);
   fuselageShade.addColorStop(0, '#f0643c');
   fuselageShade.addColorStop(0.38, PALETTE.planeBody);
@@ -270,8 +278,8 @@ function drawPlaneShapes(ctx, state, plane) {
   ctx.stroke();
   if (plane.onGround) drawLandingGear(ctx);
   const blink = Math.sin(state.time * 6) > 0.4;
-  drawNavLight(ctx, -66, -2, '#ff4b3e');
-  drawNavLight(ctx, 66, -2, '#3ee06f');
+  drawNavLight(ctx, -62, -4, '#ff4b3e');
+  drawNavLight(ctx, 70, 0, '#3ee06f');
   if (blink) drawNavLight(ctx, 0, 43, '#ffffff');
   if (plane.hull < 55) {
     ctx.fillStyle = 'rgba(70,70,70,0.35)';
