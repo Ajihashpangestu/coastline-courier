@@ -11,7 +11,7 @@ export function drawChaseAircraft(ctx, camera, state) {
   const plane = state.plane;
   const anchor = projectPoint(camera, plane.x, plane.y, plane.z);
   if (!anchor) return;
-  const scale = clamp(anchor.scale * 1.05, 2.4, plane.onGround ? 5.1 : 4.7);
+  const scale = clamp(anchor.scale * 1.12, 2.4, plane.onGround ? 5.3 : 5.0);
   const bankRad = degToRad(plane.bankDeg);
   const pitchScale = clamp(1 - plane.pitchDeg * 0.008, 0.88, 1.1);
   ctx.save();
@@ -23,7 +23,7 @@ export function drawChaseAircraft(ctx, camera, state) {
   ctx.restore();
 }
 
-function drawWing(ctx, side) {
+function drawWing(ctx, side, lightShift = 0) {
   const shade = ctx.createLinearGradient(side * 6, 0, side * 68, 0);
   shade.addColorStop(0, side < 0 ? '#f0643c' : '#d94e2c');
   shade.addColorStop(0.55, PALETTE.planeBody);
@@ -89,6 +89,40 @@ function drawWing(ctx, side) {
   ctx.beginPath();
   ctx.ellipse(side * 54, -1, 5.2, 1.8, side * -0.08, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = 'rgba(40,14,8,0.8)';
+  ctx.beginPath();
+  ctx.moveTo(side * 64, -7);
+  ctx.quadraticCurveTo(side * 69, -3, side * 64, 3);
+  ctx.lineTo(side * 64, 7);
+  ctx.quadraticCurveTo(side * 68, 2, side * 63, -3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,220,160,0.75)';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(side * 8, 2);
+  ctx.quadraticCurveTo(side * 36, -5, side * 63, -7);
+  ctx.stroke();
+  const bankLight = side * lightShift;
+  if (bankLight > 0.05) {
+    ctx.fillStyle = `rgba(255,214,150,${0.2 * bankLight})`;
+    ctx.beginPath();
+    ctx.moveTo(side * 6, 3);
+    ctx.quadraticCurveTo(side * 36, -4, side * 64, -7);
+    ctx.quadraticCurveTo(side * 69, -3, side * 64, 3);
+    ctx.quadraticCurveTo(side * 35, 9, side * 7, 14);
+    ctx.closePath();
+    ctx.fill();
+  } else if (bankLight < -0.05) {
+    ctx.fillStyle = `rgba(30,12,8,${-0.22 * bankLight})`;
+    ctx.beginPath();
+    ctx.moveTo(side * 6, 3);
+    ctx.quadraticCurveTo(side * 36, -4, side * 64, -7);
+    ctx.quadraticCurveTo(side * 69, -3, side * 64, 3);
+    ctx.quadraticCurveTo(side * 35, 9, side * 7, 14);
+    ctx.closePath();
+    ctx.fill();
+  }
 }
 
 function drawNavLight(ctx, x, y, color) {
@@ -143,31 +177,50 @@ function drawPlaneShapes(ctx, state, plane) {
   ctx.beginPath();
   ctx.ellipse(0, -45, 19, 2.8, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(39,49,61,0.22)';
-  ctx.lineWidth = 1.1;
+  ctx.fillStyle = 'rgba(39,49,61,0.07)';
   ctx.beginPath();
-  ctx.moveTo(Math.cos(propSpin) * 17, -45 + Math.sin(propSpin) * 2);
-  ctx.lineTo(-Math.cos(propSpin) * 17, -45 - Math.sin(propSpin) * 2);
+  ctx.ellipse(0, -45, 19, 3.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(39,49,61,0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(0, -45, 19, 3.6, 0, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.strokeStyle = 'rgba(39,49,61,0.3)';
+  ctx.lineWidth = 1.6;
+  for (const phase of [0, Math.PI]) {
+    const a = propSpin + phase;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * 5, -45 + Math.sin(a) * 0.8);
+    ctx.lineTo(Math.cos(a) * 17, -45 + Math.sin(a) * 2.4);
+    ctx.stroke();
+  }
   ctx.fillStyle = '#27313d';
   ctx.beginPath();
   ctx.ellipse(0, -43, 4.4, 3.2, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = 'rgba(255,220,160,0.7)';
+  ctx.beginPath();
+  ctx.ellipse(-1.2, -44, 1.4, 1, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const lightShift = clamp(plane.bankDeg / 58, -1, 1);
   ctx.save();
   ctx.translate(0, -2.5);
   ctx.scale(0.94, 0.94);
-  drawWing(ctx, -1);
+  drawWing(ctx, -1, lightShift);
   ctx.restore();
   ctx.save();
   ctx.translate(0, 2.5);
   ctx.scale(1.06, 1.06);
-  drawWing(ctx, 1);
+  drawWing(ctx, 1, lightShift);
   ctx.restore();
   const fuselageShade = ctx.createLinearGradient(-12, 0, 12, 0);
-  fuselageShade.addColorStop(0, '#f0643c');
-  fuselageShade.addColorStop(0.38, PALETTE.planeBody);
-  fuselageShade.addColorStop(0.72, '#c2432b');
-  fuselageShade.addColorStop(1, '#8f3120');
+  fuselageShade.addColorStop(0, '#e85a36');
+  fuselageShade.addColorStop(0.2, '#ff9a66');
+  fuselageShade.addColorStop(0.34, '#ffc98a');
+  fuselageShade.addColorStop(0.48, PALETTE.planeBody);
+  fuselageShade.addColorStop(0.74, '#c2432b');
+  fuselageShade.addColorStop(1, '#7e2a1a');
   ctx.fillStyle = fuselageShade;
   ctx.beginPath();
   ctx.moveTo(0, -44);
@@ -233,6 +286,28 @@ function drawPlaneShapes(ctx, state, plane) {
   ctx.beginPath();
   ctx.ellipse(0, 34, 7, 5, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = 'rgba(50,18,10,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(1.5, 27, 6.5, 13, -0.05, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(30,12,8,0.28)';
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(side * 10.5, 8, 3.4, 7, side * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#27313d';
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(side * 5.5, -36, 1.8, 2.6, side * 0.15, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(39,49,61,0.8)';
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.moveTo(0, 7);
+  ctx.lineTo(0, 13);
+  ctx.stroke();
   ctx.fillStyle = 'rgba(90,30,18,0.22)';
   ctx.beginPath();
   ctx.ellipse(6.5, 8, 2.4, 22, -0.06, 0, Math.PI * 2);
@@ -268,16 +343,43 @@ function drawPlaneShapes(ctx, state, plane) {
   ctx.quadraticCurveTo(-6.8, -22, 0, -25);
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255,243,214,0.85)';
-  ctx.lineWidth = 1.1;
+  ctx.strokeStyle = '#27313d';
+  ctx.lineWidth = 2;
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(29,75,99,0.65)';
-  ctx.lineWidth = 0.8;
+  ctx.strokeStyle = 'rgba(255,243,214,0.85)';
+  ctx.lineWidth = 0.9;
+  ctx.stroke();
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(0, -25);
+  ctx.quadraticCurveTo(6.8, -22, 7, -10);
+  ctx.quadraticCurveTo(6.5, 1, 3, 5);
+  ctx.lineTo(-3, 5);
+  ctx.quadraticCurveTo(-6.5, 1, -7, -10);
+  ctx.quadraticCurveTo(-6.8, -22, 0, -25);
+  ctx.closePath();
+  ctx.clip();
+  const reflection = ctx.createLinearGradient(-7, -24, 7, 4);
+  reflection.addColorStop(0, 'rgba(255,255,255,0)');
+  reflection.addColorStop(0.42, 'rgba(255,255,255,0.34)');
+  reflection.addColorStop(0.55, 'rgba(255,230,190,0.5)');
+  reflection.addColorStop(0.68, 'rgba(255,255,255,0)');
+  ctx.fillStyle = reflection;
+  ctx.fillRect(-8, -26, 16, 32);
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(29,75,99,0.8)';
+  ctx.lineWidth = 1.1;
   ctx.beginPath();
   ctx.moveTo(0, -24);
   ctx.quadraticCurveTo(1, -10, 0, 4);
   ctx.moveTo(-6.5, -11);
   ctx.quadraticCurveTo(0, -8, 6.5, -11);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-3.4, -21);
+  ctx.lineTo(1.5, -9);
   ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   ctx.beginPath();
@@ -315,6 +417,21 @@ function drawPlaneShapes(ctx, state, plane) {
   tailShade.addColorStop(0, '#d94e2c');
   tailShade.addColorStop(0.5, PALETTE.planeBody);
   tailShade.addColorStop(1, '#a83a24');
+  ctx.fillStyle = 'rgba(50,18,10,0.65)';
+  ctx.beginPath();
+  ctx.moveTo(-5, 31);
+  ctx.quadraticCurveTo(-18, 27, -29, 28);
+  ctx.quadraticCurveTo(-30, 32, -26, 34);
+  ctx.quadraticCurveTo(-15, 36, -4, 37);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(5, 31);
+  ctx.quadraticCurveTo(18, 27, 29, 28);
+  ctx.quadraticCurveTo(30, 32, 26, 34);
+  ctx.quadraticCurveTo(15, 36, 4, 37);
+  ctx.closePath();
+  ctx.fill();
   ctx.fillStyle = tailShade;
   ctx.beginPath();
   ctx.moveTo(-5, 29);
