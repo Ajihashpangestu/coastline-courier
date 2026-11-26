@@ -106,34 +106,52 @@ export function projectPoint(camera, x, y, z) {
 function drawMountainSilhouettes(ctx, camera, horizonY) {
   const headingDeg = Math.atan2(camera.forward.x, -camera.forward.z) * 57.2958;
   const layers = [
-    { base: 26, amp: 74, color: 'rgba(107,90,128,0.5)', snow: 'rgba(255,235,220,0.5)', seed: 3.1 },
-    { base: 10, amp: 52, color: 'rgba(62,66,88,0.68)', snow: 'rgba(255,240,225,0.75)', seed: 7.7 },
+    { base: 30, amp: 88, color: 'rgba(107,90,128,0.5)', shade: 'rgba(80,66,102,0.5)', snow: 'rgba(255,235,220,0.55)', seed: 3 },
+    { base: 12, amp: 62, color: 'rgba(62,66,88,0.7)', shade: 'rgba(42,46,66,0.72)', snow: 'rgba(255,240,225,0.8)', seed: 11 },
   ];
   for (const layer of layers) {
     const peaks = [];
+    let x = -30;
+    let i = 0;
+    while (x < camera.width + 30) {
+      const w = 34 + hash01(i * 3 + layer.seed, layer.seed) * 56;
+      const h = layer.base + hash01(i + layer.seed * 7, i * 5) * layer.amp + Math.abs(Math.sin((x + headingDeg * 9) * 0.008 + layer.seed)) * layer.amp * 0.3;
+      peaks.push({ x: x + w / 2, y: horizonY - h, w, h });
+      x += w;
+      i++;
+    }
     ctx.fillStyle = layer.color;
     ctx.beginPath();
-    ctx.moveTo(-20, horizonY + 14);
-    for (let x = -20; x <= camera.width + 20; x += 46) {
-      const t = (x + headingDeg * 9) * 0.011 + layer.seed;
-      const peak = layer.base + Math.abs(Math.sin(t * 2.3)) * layer.amp + Math.abs(Math.sin(t * 5.7)) * layer.amp * 0.35;
-      const y = horizonY - peak;
-      peaks.push({ x, y, peak });
-      ctx.lineTo(x, y);
+    ctx.moveTo(-30, horizonY + 14);
+    for (const p of peaks) {
+      ctx.lineTo(p.x - p.w * 0.28, p.y + p.h * 0.32);
+      ctx.lineTo(p.x, p.y);
+      ctx.lineTo(p.x + p.w * 0.34, p.y + p.h * 0.4);
     }
-    ctx.lineTo(camera.width + 20, horizonY + 14);
+    ctx.lineTo(camera.width + 30, horizonY + 14);
     ctx.closePath();
     ctx.fill();
+    ctx.fillStyle = layer.shade;
+    for (const p of peaks) {
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + p.w * 0.34, p.y + p.h * 0.4);
+      ctx.lineTo(p.x + p.w * 0.12, horizonY + 14);
+      ctx.lineTo(p.x - p.w * 0.05, horizonY + 14);
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.fillStyle = layer.snow;
     for (const p of peaks) {
-      if (p.peak < layer.base + layer.amp * 0.72) continue;
+      if (p.h < layer.base + layer.amp * 0.62) continue;
+      const sw = p.w * 0.2;
       ctx.beginPath();
-      ctx.moveTo(p.x - 9, p.y + 8);
+      ctx.moveTo(p.x - sw, p.y + sw * 0.9);
       ctx.lineTo(p.x, p.y);
-      ctx.lineTo(p.x + 9, p.y + 8);
-      ctx.lineTo(p.x + 3, p.y + 5);
-      ctx.lineTo(p.x, p.y + 9);
-      ctx.lineTo(p.x - 3, p.y + 5);
+      ctx.lineTo(p.x + sw, p.y + sw * 0.9);
+      ctx.lineTo(p.x + sw * 0.4, p.y + sw * 0.55);
+      ctx.lineTo(p.x, p.y + sw * 1.05);
+      ctx.lineTo(p.x - sw * 0.4, p.y + sw * 0.55);
       ctx.closePath();
       ctx.fill();
     }
@@ -306,29 +324,49 @@ function drawTerrain(ctx, camera, state) {
         color = mixColor(color, patch > 0.62 ? '#d9b45b' : grain > 0.5 ? '#86c45c' : '#4e8f3a', 0.16 + patch * 0.14);
         if (patch > 0.47 && patch < 0.53) color = mixColor(color, '#3d6b2f', 0.35);
       }
-      if (avgHeight < 0 && grain > 0.84) {
-        const sparkle = clamp((grain - 0.84) * 2.4, 0, 0.34) * (0.55 + 0.45 * Math.sin(state.time * 2 + x0 * 0.04 + z0 * 0.03));
-        color = mixColor(color, '#dff7ff', sparkle);
+      if (avgHeight < 0) {
+        const toQuadX = x0 + cell / 2 - camera.x;
+        const toQuadZ = z0 + cell / 2 - camera.z;
+        const toQuadLen = Math.sqrt(toQuadX * toQuadX + toQuadZ * toQuadZ) || 1;
+        const sunAlign = (toQuadX / toQuadLen) * -0.63 + (toQuadZ / toQuadLen) * -0.77;
+        if (sunAlign > 0.55) color = mixColor(color, '#ffb26b', (sunAlign - 0.55) * 0.5);
+        if (grain > 0.8) {
+          const sparkle = clamp((grain - 0.8) * 2.6, 0, 0.4) * (0.55 + 0.45 * Math.sin(state.time * 2 + x0 * 0.04 + z0 * 0.03));
+          color = mixColor(color, '#ffe9c4', sparkle);
+        }
       }
-      if (avgHeight < 1.5 && avgHeight > -9) {
-        const foam = clamp((1.5 - Math.abs(avgHeight)) / 4, 0, 1) * (0.35 + grain * 0.4);
+      if (avgHeight < 2.2 && avgHeight > -11) {
+        const foam = clamp((2.2 - Math.abs(avgHeight)) / 4.5, 0, 1) * (0.4 + grain * 0.45);
         color = mixColor(color, '#f4fbff', foam);
       }
       if (avgHeight > 0) color = mixColor(color, '#e8a06a', 0.1);
       else color = mixColor(color, '#c97b5a', 0.07);
       const hazeMix = clamp((depth - 1400) / 5200, 0, 0.55);
       if (hazeMix > 0) color = mixColor(color, PALETTE.skyHorizon, hazeMix);
-      quads.push({ projected, depth, color });
+      const facet = clamp(((corners[2].height - corners[0].height) / cell) * 0.3 + (grain - 0.5) * 0.06, -0.16, 0.16);
+      const colorB = mixColor(color, facet >= 0 ? '#fff2d8' : '#1e3325', Math.abs(facet));
+      quads.push({ projected, depth, color, colorB });
     }
   }
   quads.sort((a, b) => b.depth - a.depth);
   for (const quad of quads) {
+    const [p0, p1, p2, p3] = quad.projected;
     ctx.fillStyle = quad.color;
     ctx.strokeStyle = quad.color;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(quad.projected[0].x, quad.projected[0].y);
-    for (let i = 1; i < 4; i++) ctx.lineTo(quad.projected[i].x, quad.projected[i].y);
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = quad.colorB;
+    ctx.strokeStyle = quad.colorB;
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.lineTo(p3.x, p3.y);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -609,30 +647,39 @@ function drawClouds(ctx, camera, state) {
   const drawn = [];
   for (const cloud of state.clouds) {
     const p = projectPoint(camera, cloud.x, cloud.y, cloud.z);
-    if (!p || p.depth > 9000 || p.depth < 700) continue;
+    if (!p || p.depth > 9000 || p.depth < 450) continue;
     drawn.push({ cloud, p });
   }
   drawn.sort((a, b) => b.p.depth - a.p.depth);
   for (const { cloud, p } of drawn) {
-    ctx.fillStyle = 'rgba(196,150,130,0.38)';
-    for (let i = 0; i < cloud.puffs; i++) {
-      const offset = (i - (cloud.puffs - 1) / 2) * cloud.radius * 0.34 * p.scale;
+    const scale = Math.min(p.scale, 1.6);
+    const puffs = [];
+    for (let i = 0; i < cloud.puffs + 2; i++) {
+      const t = (i - (cloud.puffs + 1) / 2) / cloud.puffs;
+      const jitter = hash01(Math.round(cloud.x) + i * 7, Math.round(cloud.z) + i * 13);
+      puffs.push({
+        x: p.x + t * cloud.radius * 1.5 * scale + (jitter - 0.5) * 14 * scale,
+        y: p.y - Math.abs(t) * -6 * scale + (jitter - 0.5) * 8 * scale - (1 - Math.abs(t)) * 7 * scale,
+        rx: cloud.radius * (0.3 + jitter * 0.16) * scale,
+        ry: cloud.radius * (0.16 + jitter * 0.07) * scale,
+      });
+    }
+    ctx.fillStyle = 'rgba(150,104,96,0.42)';
+    for (const puff of puffs) {
       ctx.beginPath();
-      ctx.ellipse(p.x + offset, p.y + (7 + (i % 2) * 5) * p.scale, cloud.radius * 0.4 * p.scale, cloud.radius * 0.19 * p.scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(puff.x, puff.y + puff.ry * 0.55, puff.rx, puff.ry, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = 'rgba(255,238,222,0.78)';
-    for (let i = 0; i < cloud.puffs; i++) {
-      const offset = (i - (cloud.puffs - 1) / 2) * cloud.radius * 0.34 * p.scale;
+    ctx.fillStyle = 'rgba(255,238,222,0.8)';
+    for (const puff of puffs) {
       ctx.beginPath();
-      ctx.ellipse(p.x + offset, p.y + (i % 2) * 5 * p.scale, cloud.radius * 0.4 * p.scale, cloud.radius * 0.2 * p.scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(puff.x, puff.y, puff.rx, puff.ry, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = 'rgba(255,205,150,0.55)';
-    for (let i = 0; i < cloud.puffs; i++) {
-      const offset = (i - (cloud.puffs - 1) / 2) * cloud.radius * 0.3 * p.scale;
+    ctx.fillStyle = 'rgba(255,205,150,0.6)';
+    for (const puff of puffs) {
       ctx.beginPath();
-      ctx.ellipse(p.x + offset, p.y - 5 * p.scale, cloud.radius * 0.24 * p.scale, cloud.radius * 0.1 * p.scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(puff.x - puff.rx * 0.18, puff.y - puff.ry * 0.42, puff.rx * 0.62, puff.ry * 0.55, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   }
