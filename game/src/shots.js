@@ -103,6 +103,7 @@ function landingReportScene(state) {
   };
   state.messageTimer = 0;
   state.popupTimer = 0;
+  state.landingSmoke = true;
   finalizeResult(state);
 }
 
