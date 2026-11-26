@@ -311,9 +311,9 @@ function drawMinimap(ctx, state, width, height) {
   ctx.beginPath();
   ctx.roundRect(x, y, size, size, 10);
   ctx.clip();
-  ctx.fillStyle = '#2b93a8';
+  ctx.fillStyle = '#1b3448';
   ctx.fillRect(x, y, size, size);
-  ctx.fillStyle = '#6fae4e';
+  ctx.fillStyle = '#4a7d3f';
   ctx.beginPath();
   ctx.ellipse(x + size / 2, y + size / 2, size * 0.4, size * 0.34, 0, 0, Math.PI * 2);
   ctx.fill();
