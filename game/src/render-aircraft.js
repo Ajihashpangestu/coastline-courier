@@ -4,6 +4,7 @@
 
 import { DISPLAY, PALETTE, clamp, degToRad } from './config.js';
 import { projectPoint } from './render-world.js';
+import { terrainHeightAt } from './terrain.js';
 
 export function drawChaseAircraft(ctx, camera, state) {
   if (state.screen === 'menu' || state.cameraMode === 'cockpit') return;
@@ -27,7 +28,10 @@ function drawWing(ctx, side) {
   shade.addColorStop(0, side < 0 ? '#f0643c' : '#d94e2c');
   shade.addColorStop(0.55, PALETTE.planeBody);
   shade.addColorStop(1, side < 0 ? '#c2432b' : '#a83a24');
-  ctx.fillStyle = 'rgba(90,30,18,0.55)';
+  const underside = ctx.createLinearGradient(0, 0, 0, 18);
+  underside.addColorStop(0, 'rgba(90,30,18,0.45)');
+  underside.addColorStop(1, 'rgba(40,14,8,0.75)');
+  ctx.fillStyle = underside;
   ctx.beginPath();
   ctx.moveTo(side * 7, 7);
   ctx.quadraticCurveTo(side * 38, 0, side * 65, -3);
@@ -160,6 +164,18 @@ function drawPlaneShapes(ctx, state, plane) {
   ctx.beginPath();
   ctx.ellipse(-4.5, -6, 2.2, 24, 0.08, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(-5.5, -34);
+  ctx.quadraticCurveTo(-7.5, -6, -5, 22);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,220,170,0.35)';
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.moveTo(-3, -38);
+  ctx.quadraticCurveTo(-4.5, -10, -3, 18);
+  ctx.stroke();
   ctx.fillStyle = 'rgba(90,30,18,0.22)';
   ctx.beginPath();
   ctx.ellipse(6.5, 8, 2.4, 22, -0.06, 0, Math.PI * 2);
@@ -210,6 +226,16 @@ function drawPlaneShapes(ctx, state, plane) {
   ctx.beginPath();
   ctx.ellipse(-2.4, -16, 1.5, 5.2, -0.25, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = 'rgba(255,214,160,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(2.6, -6, 1.3, 6.5, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(-4.5, -20);
+  ctx.quadraticCurveTo(0, -14, 4.5, -19);
+  ctx.stroke();
   ctx.fillStyle = 'rgba(90,30,18,0.35)';
   for (const y of [-28, 8, 22]) {
     ctx.beginPath();
@@ -435,12 +461,44 @@ export function drawCockpit(ctx, state, width, height) {
   drawGauge(ctx, startX + step * 3, gaugeY, radius, 'HDG', headingAngle, 12);
   drawGauge(ctx, startX + step * 4, gaugeY, radius, 'VSI', vsiAngle, 9);
   drawGauge(ctx, startX + step * 5, gaugeY, radius, 'FUEL', fuelAngle, 6);
+  const rpmAngle = Math.PI * 0.75 + clamp(plane.throttle, 0, 1) * Math.PI * 1.5;
+  const aglFt = Math.max(0, (plane.y - Math.max(terrainHeightAt(plane.x, plane.z), 0)) * DISPLAY.metersToFeet);
+  const radaltAngle = Math.PI * 0.75 + clamp(aglFt / 1000, 0, 1) * Math.PI * 1.5;
+  drawGauge(ctx, width * 0.115, gaugeY, radius * 0.62, 'RPM', rpmAngle, 8);
+  drawGauge(ctx, width * 0.885, gaugeY, radius * 0.62, 'RADALT', radaltAngle, 8);
+  ctx.font = '700 13px ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  const readouts = [
+    { x: startX, text: `${Math.round(speedKt)} KT` },
+    { x: startX + step * 2, text: `${Math.round(altFt)} FT` },
+    { x: startX + step * 3, text: `${String(Math.round(plane.headingDeg)).padStart(3, '0')}°` },
+    { x: startX + step * 5, text: `${Math.round(plane.fuel)}%` },
+  ];
+  for (const r of readouts) {
+    ctx.fillStyle = '#0d141d';
+    ctx.beginPath();
+    ctx.roundRect(r.x - 34, gaugeY + radius + 8, 68, 20, 4);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,217,138,0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#ffd98a';
+    ctx.fillText(r.text, r.x, gaugeY + radius + 23);
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(0, panelTop + 2, width, 10);
+  ctx.fillStyle = '#39424e';
+  for (let i = 0; i < 12; i++) {
+    ctx.beginPath();
+    ctx.arc(width * (0.06 + i * 0.08), height - 12, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
   const yokeX = width * 0.5;
-  const yokeY = height * 0.93;
+  const yokeY = height * 0.975;
   ctx.strokeStyle = '#39424e';
   ctx.lineWidth = 9;
   ctx.beginPath();
-  ctx.arc(yokeX, yokeY, width * 0.045, Math.PI * 1.05, Math.PI * 1.95);
+  ctx.arc(yokeX, yokeY, width * 0.04, Math.PI * 1.05, Math.PI * 1.95);
   ctx.stroke();
   ctx.lineWidth = 6;
   ctx.beginPath();
