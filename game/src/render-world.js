@@ -214,13 +214,22 @@ function drawTerrain(ctx, camera, state) {
       if (depth > WORLD.viewDistance) continue;
       const base = terrainColorAt(x0 + cell / 2, z0 + cell / 2, avgHeight, slope);
       const grain = ((Math.sin(x0 * 12.9898 + z0 * 78.233) * 43758.5453) % 1 + 1) % 1;
+      const patch = ((Math.sin(Math.floor(x0 / 420) * 39.7 + Math.floor(z0 / 420) * 17.3) * 24634.63) % 1 + 1) % 1;
       const sunSlope = ((corners[0].height + corners[3].height) - (corners[1].height + corners[2].height)) / (2 * cell);
-      let light = clamp(0.82 + slope * 0.3 + sunSlope * 0.55 + (avgHeight > 0 ? 0.08 : 0) + grain * 0.09, 0.55, 1.2);
+      let light = clamp(0.8 + slope * 0.3 + sunSlope * 0.55 + (avgHeight > 0 ? 0.08 : 0) + grain * 0.16, 0.52, 1.24);
+      if (avgHeight >= 0.6 && avgHeight < 80) light = clamp(light + (patch - 0.5) * 0.14, 0.52, 1.24);
       if (avgHeight < 0) {
         const wave = Math.sin(x0 * 0.021 + z0 * 0.013 + state.time * 1.4) * 0.05;
-        light = clamp(light + wave, 0.55, 1.2);
+        light = clamp(light + wave, 0.52, 1.24);
       }
       let color = shadeColor(base, light);
+      if (avgHeight >= 0.6 && avgHeight < 80) {
+        color = mixColor(color, grain > 0.5 ? '#86c45c' : '#5f9c43', 0.1 + patch * 0.08);
+      }
+      if (avgHeight < 0 && grain > 0.84) {
+        const sparkle = clamp((grain - 0.84) * 2.4, 0, 0.34) * (0.55 + 0.45 * Math.sin(state.time * 2 + x0 * 0.04 + z0 * 0.03));
+        color = mixColor(color, '#dff7ff', sparkle);
+      }
       if (avgHeight < 1.5 && avgHeight > -9) {
         const foam = clamp((1.5 - Math.abs(avgHeight)) / 4, 0, 1) * (0.35 + grain * 0.4);
         color = mixColor(color, '#f4fbff', foam);
@@ -523,11 +532,25 @@ function drawClouds(ctx, camera, state) {
   }
   drawn.sort((a, b) => b.p.depth - a.p.depth);
   for (const { cloud, p } of drawn) {
-    ctx.fillStyle = 'rgba(255,252,246,0.72)';
+    ctx.fillStyle = 'rgba(148,176,196,0.34)';
+    for (let i = 0; i < cloud.puffs; i++) {
+      const offset = (i - (cloud.puffs - 1) / 2) * cloud.radius * 0.34 * p.scale;
+      ctx.beginPath();
+      ctx.ellipse(p.x + offset, p.y + (7 + (i % 2) * 5) * p.scale, cloud.radius * 0.4 * p.scale, cloud.radius * 0.19 * p.scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,252,246,0.76)';
     for (let i = 0; i < cloud.puffs; i++) {
       const offset = (i - (cloud.puffs - 1) / 2) * cloud.radius * 0.34 * p.scale;
       ctx.beginPath();
       ctx.ellipse(p.x + offset, p.y + (i % 2) * 5 * p.scale, cloud.radius * 0.4 * p.scale, cloud.radius * 0.2 * p.scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    for (let i = 0; i < cloud.puffs; i++) {
+      const offset = (i - (cloud.puffs - 1) / 2) * cloud.radius * 0.3 * p.scale;
+      ctx.beginPath();
+      ctx.ellipse(p.x + offset, p.y - 5 * p.scale, cloud.radius * 0.24 * p.scale, cloud.radius * 0.1 * p.scale, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -568,10 +591,13 @@ function drawPlaneShadow(ctx, camera, state) {
   ctx.translate(p.x, p.y);
   ctx.rotate(degToRad(plane.headingDeg) * 0.35);
   ctx.beginPath();
-  ctx.ellipse(0, 0, size, size * 0.3, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, size * 1.18, size * 0.24, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(0, 0, size * 0.22, size * 0.62, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, size * 0.2, size * 0.72, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0, size * 0.48, size * 0.52, size * 0.13, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
   if (state.landingSmoke) {
