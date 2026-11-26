@@ -33,12 +33,13 @@ export function makeCamera(state, width, height) {
     lookY = plane.y + Math.sin(pitchRad) * 300;
     lookZ = plane.z + axis.z * 300;
   } else {
-    camX = plane.x - axis.x * 26;
-    camY = plane.y + 8.5 - Math.sin(pitchRad) * 10;
-    camZ = plane.z - axis.z * 26;
-    lookX = plane.x + axis.x * 220;
-    lookY = plane.y + Math.sin(pitchRad) * 160;
-    lookZ = plane.z + axis.z * 220;
+    const rightAxis = { x: -axis.z, z: axis.x };
+    camX = plane.x - axis.x * 34 + rightAxis.x * 3;
+    camY = plane.y + 3.4 - Math.sin(pitchRad) * 6;
+    camZ = plane.z - axis.z * 34 + rightAxis.z * 3;
+    lookX = plane.x + axis.x * 260 + rightAxis.x * 1;
+    lookY = plane.y + Math.sin(pitchRad) * 130 - 1.5;
+    lookZ = plane.z + axis.z * 260 + rightAxis.z * 1;
   }
   const forward = normalize({ x: lookX - camX, y: lookY - camY, z: lookZ - camZ });
   const flatRight = normalize(cross(forward, { x: 0, y: 1, z: 0 }));
@@ -589,15 +590,15 @@ function drawPlaneShadow(ctx, camera, state) {
   ctx.fillStyle = `rgba(16,32,47,${clamp(0.36 - heightAbove / 2200, 0.05, 0.36)})`;
   ctx.save();
   ctx.translate(p.x, p.y);
-  ctx.rotate(degToRad(plane.headingDeg) * 0.35);
+  ctx.rotate(degToRad(plane.bankDeg) * 0.35);
   ctx.beginPath();
-  ctx.ellipse(0, 0, size * 1.18, size * 0.24, 0, 0, Math.PI * 2);
+  ctx.ellipse(size * 0.06, 0, size * 1.3, size * 0.2, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(0, 0, size * 0.2, size * 0.72, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -size * 0.08, size * 0.18, size * 0.5, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(0, size * 0.48, size * 0.52, size * 0.13, 0, 0, Math.PI * 2);
+  ctx.ellipse(-size * 0.04, size * 0.34, size * 0.56, size * 0.11, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
   if (state.landingSmoke) {
