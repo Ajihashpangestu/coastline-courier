@@ -6,19 +6,24 @@ import { DISPLAY, PALETTE, RUNWAY, clamp, headingVector, wrapDegrees } from './c
 import { activeRing, objectiveText } from './missions.js';
 import { altitudeAboveGround } from './aircraft.js';
 
+const HUD_TEXT = '#eef3f8';
+
 function panel(ctx, x, y, w, h) {
-  ctx.fillStyle = 'rgba(16,32,47,0.28)';
+  ctx.fillStyle = 'rgba(8,12,20,0.35)';
   ctx.beginPath();
   ctx.roundRect(x + 3, y + 4, w, h, 10);
   ctx.fill();
-  ctx.fillStyle = PALETTE.hudPaper;
+  const panelGradient = ctx.createLinearGradient(0, y, 0, y + h);
+  panelGradient.addColorStop(0, 'rgba(24,34,50,0.92)');
+  panelGradient.addColorStop(1, 'rgba(11,18,29,0.92)');
+  ctx.fillStyle = panelGradient;
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, 10);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(16,32,47,0.38)';
-  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = 'rgba(255,190,110,0.35)';
+  ctx.lineWidth = 1.4;
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(x + 10, y + 1.5);
@@ -105,7 +110,7 @@ function drawMiniGauge(ctx, x, y, radius, label, fraction, valueText) {
   ctx.font = '700 9px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(label, x, y + radius * 0.58);
-  ctx.fillStyle = PALETTE.hudInk;
+  ctx.fillStyle = HUD_TEXT;
   ctx.font = '700 10px ui-monospace, monospace';
   ctx.fillText(valueText, x, y + radius * 1.24);
 }
@@ -127,7 +132,7 @@ function drawInstrumentStrip(ctx, state, width, height) {
 function drawFlightData(ctx, state, width) {
   const plane = state.plane;
   panel(ctx, 16, 14, 380, 96);
-  ctx.fillStyle = PALETTE.hudInk;
+  ctx.fillStyle = HUD_TEXT;
   ctx.textAlign = 'left';
   const altFt = Math.round(plane.y * DISPLAY.metersToFeet);
   const speedKt = Math.round(plane.speed * DISPLAY.msToKnots);
@@ -138,10 +143,10 @@ function drawFlightData(ctx, state, width) {
   ctx.fillText(`HDG ${heading}°`, 214, 45);
   const vsFpm = Math.round(plane.verticalSpeed * 196.85);
   ctx.font = '600 15px ui-monospace, monospace';
-  ctx.fillStyle = vsFpm < -900 ? '#c0392b' : PALETTE.hudInk;
+  ctx.fillStyle = vsFpm < -900 ? '#c0392b' : HUD_TEXT;
   ctx.fillText(`${vsFpm >= 0 ? '+' : ''}${vsFpm} FPM`, 214, 71);
   const aglFt = Math.round(altitudeAboveGround(plane) * DISPLAY.metersToFeet);
-  ctx.fillStyle = PALETTE.hudInk;
+  ctx.fillStyle = HUD_TEXT;
   ctx.font = '600 13px ui-monospace, monospace';
   ctx.fillText(`AGL ${aglFt} FT  THR ${Math.round(plane.throttle * 100)}%`, 30, 97);
   drawMiniAttitude(ctx, 352, 58, 26, plane.pitchDeg, plane.bankDeg);
@@ -157,7 +162,7 @@ function drawCompassRibbon(ctx, state, width) {
   ctx.beginPath();
   ctx.roundRect(x, 14, w, 44, 10);
   ctx.clip();
-  ctx.fillStyle = PALETTE.hudInk;
+  ctx.fillStyle = HUD_TEXT;
   ctx.font = '700 15px ui-monospace, monospace';
   ctx.textAlign = 'center';
   const heading = wrapDegrees(plane.headingDeg);
@@ -170,9 +175,9 @@ function drawCompassRibbon(ctx, state, width) {
     ctx.fillRect(px, 46, cardinal ? 2.2 : 1.6, value % 30 === 0 ? 9 : 5);
     if (label) {
       ctx.font = cardinal ? '800 17px ui-monospace, monospace' : '700 14px ui-monospace, monospace';
-      ctx.fillStyle = cardinal ? PALETTE.hudAccent : PALETTE.hudInk;
+      ctx.fillStyle = cardinal ? PALETTE.hudAccent : HUD_TEXT;
       ctx.fillText(label, px, 40);
-      ctx.fillStyle = PALETTE.hudInk;
+      ctx.fillStyle = HUD_TEXT;
     }
   }
   ctx.restore();
@@ -189,7 +194,7 @@ function drawMissionCard(ctx, state, width) {
   const w = 300;
   const x = width - w - 16;
   panel(ctx, x, 14, w, 96);
-  ctx.fillStyle = PALETTE.hudInk;
+  ctx.fillStyle = HUD_TEXT;
   ctx.textAlign = 'left';
   ctx.font = '700 17px system-ui, sans-serif';
   ctx.fillText(state.mission ? state.mission.definition.name : '', x + 16, 40);
@@ -206,7 +211,7 @@ function drawBars(ctx, state, height) {
   panel(ctx, x, y, 240, 102);
   ctx.textAlign = 'left';
   ctx.font = '700 13px system-ui, sans-serif';
-  ctx.fillStyle = PALETTE.hudInk;
+  ctx.fillStyle = HUD_TEXT;
   ctx.fillText('THROTTLE', x + 14, y + 24);
   ctx.fillText('FUEL', x + 14, y + 54);
   ctx.fillText('HULL', x + 14, y + 84);
@@ -219,7 +224,7 @@ function drawBars(ctx, state, height) {
   ];
   rows.forEach((row, i) => {
     const by = y + 14 + i * 30;
-    ctx.fillStyle = 'rgba(16,32,47,0.18)';
+    ctx.fillStyle = 'rgba(255,255,255,0.16)';
     ctx.beginPath();
     ctx.roundRect(barX, by, barW, 12, 6);
     ctx.fill();
@@ -227,7 +232,7 @@ function drawBars(ctx, state, height) {
     ctx.beginPath();
     ctx.roundRect(barX, by, barW * clamp(row.value, 0, 1), 12, 6);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(16,32,47,0.35)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = 1;
     for (let t = 1; t < 4; t++) {
       ctx.beginPath();
@@ -235,7 +240,7 @@ function drawBars(ctx, state, height) {
       ctx.lineTo(barX + (barW / 4) * t, by + 11);
       ctx.stroke();
     }
-    ctx.fillStyle = PALETTE.hudInk;
+    ctx.fillStyle = HUD_TEXT;
     ctx.font = '700 11px ui-monospace, monospace';
     ctx.textAlign = 'right';
     ctx.fillText(`${Math.round(clamp(row.value, 0, 1) * 100)}%`, barX + barW - 4, by + 10);
@@ -276,7 +281,7 @@ function drawNavArrow(ctx, state, width, height) {
   ctx.translate(cx, cy);
   ctx.rotate((relative * Math.PI) / 180);
   ctx.fillStyle = PALETTE.ringNext;
-  ctx.strokeStyle = PALETTE.hudInk;
+  ctx.strokeStyle = HUD_TEXT;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(0, -16);
@@ -392,7 +397,7 @@ function drawBanners(ctx, state, width) {
     ctx.font = '600 17px system-ui, sans-serif';
     const w = Math.min(width - 60, ctx.measureText(state.message).width + 36);
     panel(ctx, width / 2 - w / 2, 128, w, 36);
-    ctx.fillStyle = PALETTE.hudInk;
+    ctx.fillStyle = HUD_TEXT;
     ctx.fillText(state.message, width / 2, 151);
   }
   if (state.plane.stalled) {
