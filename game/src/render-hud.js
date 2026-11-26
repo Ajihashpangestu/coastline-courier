@@ -32,22 +32,119 @@ function formatTime(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+function drawMiniAttitude(ctx, x, y, radius, pitchDeg, bankDeg) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.translate(x, y);
+  ctx.rotate((bankDeg * Math.PI) / 180);
+  const shift = clamp(pitchDeg * 0.9, -radius * 0.7, radius * 0.7);
+  ctx.fillStyle = '#4a90c4';
+  ctx.fillRect(-radius, -radius + shift, radius * 2, radius);
+  ctx.fillStyle = '#8a6b45';
+  ctx.fillRect(-radius, shift, radius * 2, radius);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-radius, shift);
+  ctx.lineTo(radius, shift);
+  ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = '#39424e';
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = '#ffd23d';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(x - radius * 0.55, y);
+  ctx.lineTo(x - radius * 0.15, y);
+  ctx.moveTo(x + radius * 0.15, y);
+  ctx.lineTo(x + radius * 0.55, y);
+  ctx.stroke();
+}
+
+function drawMiniGauge(ctx, x, y, radius, label, fraction, valueText) {
+  const bezel = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.35, radius * 0.2, x, y, radius * 1.12);
+  bezel.addColorStop(0, '#4b5766');
+  bezel.addColorStop(0.7, '#232c38');
+  bezel.addColorStop(1, '#11161e');
+  ctx.fillStyle = bezel;
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 1.12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = PALETTE.gaugeFace;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.gaugeLit;
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,217,138,0.85)';
+  ctx.lineWidth = 1.2;
+  for (let i = 0; i <= 8; i++) {
+    const angle = Math.PI * 0.75 + (i / 8) * Math.PI * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(angle) * radius * 0.78, y + Math.sin(angle) * radius * 0.78);
+    ctx.lineTo(x + Math.cos(angle) * radius * 0.92, y + Math.sin(angle) * radius * 0.92);
+    ctx.stroke();
+  }
+  const needle = Math.PI * 0.75 + clamp(fraction, 0, 1) * Math.PI * 1.5;
+  ctx.strokeStyle = '#ff9f2e';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + Math.cos(needle) * radius * 0.78, y + Math.sin(needle) * radius * 0.78);
+  ctx.stroke();
+  ctx.fillStyle = PALETTE.gaugeLit;
+  ctx.beginPath();
+  ctx.arc(x, y, 2.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.font = '700 9px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, x, y + radius * 0.58);
+  ctx.fillStyle = PALETTE.hudInk;
+  ctx.font = '700 10px ui-monospace, monospace';
+  ctx.fillText(valueText, x, y + radius * 1.24);
+}
+
+function drawInstrumentStrip(ctx, state, width, height) {
+  const plane = state.plane;
+  const w = 352;
+  const x = width / 2 - w / 2;
+  const y = height - 96;
+  panel(ctx, x, y, w, 82);
+  const cy = y + 32;
+  drawMiniAttitude(ctx, x + 52, cy, 25, plane.pitchDeg, plane.bankDeg);
+  const altFt = plane.y * DISPLAY.metersToFeet;
+  drawMiniGauge(ctx, x + 132, cy, 25, 'ALT', (altFt % 1000) / 1000, `${Math.round(altFt)}`);
+  drawMiniGauge(ctx, x + 212, cy, 25, 'HDG', wrapDegrees(plane.headingDeg) / 360, `${String(Math.round(wrapDegrees(plane.headingDeg))).padStart(3, '0')}°`);
+  drawMiniGauge(ctx, x + 292, cy, 25, 'VSI', clamp((plane.verticalSpeed * 196.85 + 2000) / 4000, 0, 1), `${Math.round(plane.verticalSpeed * 196.85)}`);
+}
+
 function drawFlightData(ctx, state, width) {
   const plane = state.plane;
-  panel(ctx, 16, 14, 356, 78);
+  panel(ctx, 16, 14, 380, 96);
   ctx.fillStyle = PALETTE.hudInk;
   ctx.textAlign = 'left';
   const altFt = Math.round(plane.y * DISPLAY.metersToFeet);
   const speedKt = Math.round(plane.speed * DISPLAY.msToKnots);
   const heading = String(Math.round(wrapDegrees(plane.headingDeg))).padStart(3, '0');
   ctx.font = '700 23px ui-monospace, monospace';
-  ctx.fillText(`ALT ${altFt} FT`, 30, 47);
-  ctx.fillText(`SPD ${speedKt} KT`, 30, 77);
-  ctx.fillText(`HDG ${heading}°`, 222, 47);
+  ctx.fillText(`ALT ${altFt} FT`, 30, 45);
+  ctx.fillText(`SPD ${speedKt} KT`, 30, 73);
+  ctx.fillText(`HDG ${heading}°`, 214, 45);
   const vsFpm = Math.round(plane.verticalSpeed * 196.85);
-  ctx.font = '600 16px ui-monospace, monospace';
+  ctx.font = '600 15px ui-monospace, monospace';
   ctx.fillStyle = vsFpm < -900 ? '#c0392b' : PALETTE.hudInk;
-  ctx.fillText(`${vsFpm >= 0 ? '+' : ''}${vsFpm} FPM`, 222, 75);
+  ctx.fillText(`${vsFpm >= 0 ? '+' : ''}${vsFpm} FPM`, 214, 71);
+  const aglFt = Math.round(altitudeAboveGround(plane) * DISPLAY.metersToFeet);
+  ctx.fillStyle = PALETTE.hudInk;
+  ctx.font = '600 13px ui-monospace, monospace';
+  ctx.fillText(`AGL ${aglFt} FT  THR ${Math.round(plane.throttle * 100)}%`, 30, 97);
+  drawMiniAttitude(ctx, 352, 58, 26, plane.pitchDeg, plane.bankDeg);
   void width;
 }
 
@@ -130,6 +227,19 @@ function drawBars(ctx, state, height) {
     ctx.beginPath();
     ctx.roundRect(barX, by, barW * clamp(row.value, 0, 1), 12, 6);
     ctx.fill();
+    ctx.strokeStyle = 'rgba(16,32,47,0.35)';
+    ctx.lineWidth = 1;
+    for (let t = 1; t < 4; t++) {
+      ctx.beginPath();
+      ctx.moveTo(barX + (barW / 4) * t, by + 1);
+      ctx.lineTo(barX + (barW / 4) * t, by + 11);
+      ctx.stroke();
+    }
+    ctx.fillStyle = PALETTE.hudInk;
+    ctx.font = '700 11px ui-monospace, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${Math.round(clamp(row.value, 0, 1) * 100)}%`, barX + barW - 4, by + 10);
+    ctx.textAlign = 'left';
   });
 }
 
@@ -299,6 +409,7 @@ export function drawHud(ctx, state, width, height) {
   drawMissionCard(ctx, state, width);
   if (state.cameraMode !== 'cockpit') {
     drawBars(ctx, state, height);
+    drawInstrumentStrip(ctx, state, width, height);
     drawMinimap(ctx, state, width, height);
   }
   drawNavArrow(ctx, state, width, height);
