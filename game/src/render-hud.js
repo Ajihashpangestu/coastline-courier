@@ -7,12 +7,22 @@ import { activeRing, objectiveText } from './missions.js';
 import { altitudeAboveGround } from './aircraft.js';
 
 function panel(ctx, x, y, w, h) {
+  ctx.fillStyle = 'rgba(16,32,47,0.28)';
+  ctx.beginPath();
+  ctx.roundRect(x + 3, y + 4, w, h, 10);
+  ctx.fill();
   ctx.fillStyle = PALETTE.hudPaper;
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, 10);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(16,32,47,0.25)';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(16,32,47,0.38)';
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + 10, y + 1.5);
+  ctx.lineTo(x + w - 10, y + 1.5);
   ctx.stroke();
 }
 
@@ -58,9 +68,15 @@ function drawCompassRibbon(ctx, state, width) {
   for (let mark = firstMark; mark <= heading + 65; mark += 10) {
     const value = wrapDegrees(mark);
     const px = width / 2 + (mark - heading) * 2.6;
-    const label = value % 90 === 0 ? ['N', 'E', 'S', 'W'][value / 90] : value % 30 === 0 ? String(value / 10).padStart(2, '0') : '';
-    ctx.fillRect(px, 46, 1.6, value % 30 === 0 ? 9 : 5);
-    if (label) ctx.fillText(label, px, 40);
+    const cardinal = value % 90 === 0;
+    const label = cardinal ? ['N', 'E', 'S', 'W'][value / 90] : value % 30 === 0 ? String(value / 10).padStart(2, '0') : '';
+    ctx.fillRect(px, 46, cardinal ? 2.2 : 1.6, value % 30 === 0 ? 9 : 5);
+    if (label) {
+      ctx.font = cardinal ? '800 17px ui-monospace, monospace' : '700 14px ui-monospace, monospace';
+      ctx.fillStyle = cardinal ? PALETTE.hudAccent : PALETTE.hudInk;
+      ctx.fillText(label, px, 40);
+      ctx.fillStyle = PALETTE.hudInk;
+    }
   }
   ctx.restore();
   ctx.fillStyle = PALETTE.hudAccent;
@@ -193,6 +209,19 @@ function drawMinimap(ctx, state, width, height) {
   const runway = toMap(RUNWAY.centerX, RUNWAY.centerZ);
   ctx.fillStyle = '#3c4148';
   ctx.fillRect(runway.x - 2, runway.y - 9, 4, 18);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '800 11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('N', x + size / 2, y + 14);
+  if (state.mission && state.mission.definition.kind === 'rings') {
+    for (const ring of state.mission.definition.rings) {
+      const rp = toMap(ring.x, ring.z);
+      ctx.fillStyle = ring.passed ? PALETTE.ringPassed : PALETTE.ringWaiting;
+      ctx.beginPath();
+      ctx.arc(rp.x, rp.y, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
   const target = objectiveTarget(state);
   if (target) {
     const t = toMap(target.x, target.z);
